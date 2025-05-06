@@ -1,0 +1,43 @@
+Check if client has the authority to send messages to receiver or if it is a group chat check 
+whether client is a member of a group or not
+
+File restriction :
+10 files at a time,
+For photos only jpeg and png supported
+For both photo and video total payload size limit is 250MB
+For videos only mp4 is supported
+Each video should be less than or equal to 1 min
+
+When adding someone to a group check for the following:
+    Check if the client has the authority, to add the target account to group, if not throw an error
+    If yes then check if the recipient is going get the information has request or a direct inbox thread
+    Send the complete information about the group to the  target account that includes full information of the members of the group
+
+
+For One-to-One chat:
+Check if the recipient account exists or not
+Check if the recipient account is deactivated or suspended
+Check if the recipient account has blocking relation with client
+Check if chat document of client and recipient exists or not; if chat document exists check if the client is an active member or not; 
+if not throw error.
+If Chat document doesnot exists then check for the following:
+    Check if the client has the privilege to start a chat with the recipient if not throw an error
+    If the client can send the message is it going to be a message request or a direct inbox chat and reflect that information in the 
+    chat document that is about to be created.
+
+If a new chat document is created in that case both of the participant of the chat document will recive a complete information of the 
+chat that will include the message itself and the information about the recipient.
+If a chat document a chat already exists then the complete chat information will be send to that recipient only who has deleted the chat
+and for those participant who are active members and not deleted will receive a minimal information about the message owner
+
+For Group Chat:
+Check if the group exists or not if not throw an error
+If exist then check if the recipient is an active member of the group, if not throw an error
+Send minimal information about the message to those members who are active.
+
+
+Account attachment checks:
+Check if the target account exists or not
+Check if the target account is deactivated or suspended
+Check if the the client has the authority of sharing the target account (check for blocking connection)
+Check if the recipient account has the privilege to receive the account (check for blocking connection)
