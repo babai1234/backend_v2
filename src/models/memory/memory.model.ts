@@ -14,7 +14,7 @@ import { getAccountByUserId } from "../account.model";
 import { highlightCollection, memoryCollection } from "../index.model";
 import { AppError } from "../../constants/appError";
 import HttpStatusCodes from "../../constants/HttpStatusCodes";
-import { getAudioById } from "../audio.model";
+import { getMusicAudioById } from "../audio.model";
 
 /**
  * Uploads a memory object to the database, including captions, media content, mentions,
@@ -175,8 +175,8 @@ export const memoryUpload = async (
 		}
 
 		// Validate used audio
-		if (memoryMetadata.associatedAudio) {
-			const audioInfo = await getAudioById(memoryMetadata.associatedAudio);
+		if (memoryMetadata.usedAudioId) {
+			const audioInfo = await getMusicAudioById(memoryMetadata.usedAudioId);
 			if (audioInfo) {
 				isUsedAudioValid = true;
 			} else {
@@ -191,9 +191,9 @@ export const memoryUpload = async (
 			author: new ObjectId(clientAccountId),
 			expiredAt: setExpirationTime(current),
 			content: memoryMedia,
-			usedAudio:
-				memoryMetadata.associatedAudio && isUsedAudioValid
-					? new ObjectId(memoryMetadata.associatedAudio)
+			usedAudioId:
+				memoryMetadata.usedAudioId && isUsedAudioValid
+					? new ObjectId(memoryMetadata.usedAudioId)
 					: undefined,
 			captions: captions.length ? captions : undefined,
 			sticker,

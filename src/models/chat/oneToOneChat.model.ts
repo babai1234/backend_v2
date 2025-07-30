@@ -229,6 +229,7 @@ export async function oneToOneChatAttachmentMessageUpload(
 				attachment: {
 					type: "audio",
 					id: new ObjectId(attachment.id),
+					audioType: attachment.audioType,
 				},
 				...(attachment.caption && {
 					content: createContent(attachment.caption),

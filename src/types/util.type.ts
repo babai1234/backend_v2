@@ -221,6 +221,7 @@ export type OneToOneChatAccountAttachmentUploadRequestParams = {
 
 export type OneToOneChatAudioAttachmentUploadRequestParams = {
 	sentTo: string;
+	type: "Original" | "Music";
 	audioId: string;
 	caption?: string;
 };
@@ -270,6 +271,7 @@ export type GroupChatAccountAttachmentUploadRequestParams = {
 
 export type GroupChatAudioAttachmentUploadRequestParams = {
 	chatId: string;
+	type: "Original" | "Music";
 	audioId: string;
 	caption?: string;
 };
@@ -363,9 +365,15 @@ export type AttachmentParams =
 			file: (ImageFile | VideoFile)[];
 	  })
 	| ({
-			type: "account" | "audio" | "photo" | "moment" | "clip" | "memory";
+			type: "account" | "photo" | "moment" | "clip" | "memory";
 	  } & {
 			id: ObjectId;
+	  })
+	| ({
+			type: "audio";
+	  } & {
+			id: ObjectId;
+			audioType: "original" | "music";
 	  })
 	| ({ type: "highlight" } & {
 			highlightInfo: {
@@ -382,9 +390,15 @@ export type ReplyAttachmentParams =
 			content: string;
 	  })
 	| ({
-			type: "account" | "audio" | "photo" | "moment" | "clip" | "memory";
+			type: "account" | "photo" | "moment" | "clip" | "memory";
 	  } & {
 			id: ObjectId;
+	  })
+	| ({
+			type: "audio";
+	  } & {
+			id: ObjectId;
+			audioType: "Original" | "Music";
 	  })
 	| ({ type: "highlight" } & {
 			highlightInfo: {
@@ -488,6 +502,7 @@ export type AccountPayloadParams = {
 export type AudioPayloadParams = {
 	type: "audio";
 	id: string;
+	audioType: "original" | "music";
 	caption?: string;
 };
 
@@ -550,7 +565,7 @@ export type MemoryUploadParams = {
 	addedHighlights?: string[];
 	taggedLocation?: LocationMetadata;
 	link?: LinkMetadata;
-	associatedAudio?: string;
+	usedAudioId?: string;
 	poll?: PollInfo;
 	starRating?: StarRating;
 	usedAfterEffect?: string;
@@ -674,7 +689,7 @@ export type PhotoPostUploadParams = {
 		name: string;
 	};
 	usedAudio?: {
-		audioId: string;
+		id: string;
 		usedSection: [number, number];
 	};
 	taggedAccounts?: {
@@ -702,7 +717,8 @@ export type MomentPostUploadParams = {
 		name: string;
 	};
 	usedAudio?: {
-		audioId: string;
+		type: "music" | "original";
+		id: string;
 		usedSection: [number, number];
 	};
 	taggedAccounts?: string[];
@@ -749,9 +765,15 @@ type VideoMetaData = {
 	isMute: boolean;
 };
 
-export interface CustomRequest extends Request {
+export type CustomRequest<
+	Params = {},
+	ResBody = any,
+	ReqBody = any,
+	ReqQuery = any,
+	Locals extends Record<string, any> = Record<string, any>
+> = Request<Params, ResBody, ReqBody, ReqQuery, Locals> & {
 	clientAccountInfo?: WithId<Account>;
-}
+};
 
 export type MediaFile = {
 	mimetype: string;
@@ -780,3 +802,14 @@ export type PostProcessLambdaEvent = {
 				file: MediaFile[];
 		  });
 };
+
+export type SearchRequestParams = {
+	keyword: string;
+	page: number;
+	limit: number;
+};
+
+export type AudioSaveList = { savedAt: Date } & (
+	| { type: "music"; audioId: string }
+	| { type: "original"; audioId: ObjectId }
+);

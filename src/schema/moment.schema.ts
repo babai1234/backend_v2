@@ -92,12 +92,23 @@ export const momentPostUploadSchema: Schema = {
 	usedAudio: {
 		in: ["body"],
 		optional: true,
-		isObject: {
-			bail: true,
-			errorMessage: "usedAudio should be an object",
+		custom: {
+			options: (value: any) => {
+				if (typeof value !== "object" || Array.isArray(value)) {
+					throw new Error("usedAudio must be an object.");
+				}
+				const requiredFields = ["id", "usedSection", "type"];
+				const missingFields = requiredFields.filter((key) => !(key in value));
+				if (missingFields.length > 0) {
+					throw new Error(
+						`usedAudio must include ${missingFields.join(", ")}.`
+					);
+				}
+				return true;
+			},
 		},
 	},
-	"usedAudio.audioId": {
+	"usedAudio.id": {
 		optional: true,
 		isString: {
 			bail: true,
@@ -135,6 +146,25 @@ export const momentPostUploadSchema: Schema = {
 		},
 		errorMessage: "usedSection is required",
 	},
+	"usedAudio.type": {
+		optional: true,
+		isString: {
+			bail: true,
+			errorMessage: "usedAudio type should be a string",
+		},
+		trim: true,
+		notEmpty: {
+			options: { ignore_whitespace: true },
+			bail: true,
+			errorMessage: "usedAudio type cannot be empty",
+		},
+		isIn: {
+			options: [["original", "music"]],
+			bail: true,
+			errorMessage: "usedAudio type must be either 'original' or 'music'",
+		},
+		errorMessage: "usedAudio type is required",
+	},
 	taggedAccounts: {
 		in: ["body"],
 		optional: true,
@@ -170,7 +200,7 @@ export const momentPostUploadSchema: Schema = {
 		custom: {
 			options: (value: any) => {
 				if (typeof value !== "object" || Array.isArray(value)) {
-					throw new Error("taggedLocation must be an object.");
+					throw new Error("postFileInfo must be an object.");
 				}
 				const requiredFields = [
 					"fileName",
@@ -185,7 +215,7 @@ export const momentPostUploadSchema: Schema = {
 				const missingFields = requiredFields.filter((key) => !(key in value));
 				if (missingFields.length > 0) {
 					throw new Error(
-						`taggedLocation must include ${missingFields.join(", ")}.`
+						`postFileInfo must include ${missingFields.join(", ")}.`
 					);
 				}
 				return true;

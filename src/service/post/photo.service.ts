@@ -25,12 +25,18 @@ import {
 import { sendMessageToTopic } from "../../fcm/oneToOneMessage";
 import { databaseClient } from "../../models/index.model";
 import { updateHashtagPostUse } from "../../models/hashTag.model";
-import { updateAudioPostUse } from "../../models/audio.model";
 import { getAccountById, getAccountByUserId } from "../../models/account.model";
 import { updateLocationPostUse } from "../../models/location.model";
 import { Comment, PhotoPost } from "../../types/collection/post.type";
 import { AppError } from "../../constants/appError";
 import HttpStatusCodes from "../../constants/HttpStatusCodes";
+import {
+	getMusicAudioApiResultById,
+	getMusicAudioByApiId,
+	updateMusicAudioPhotoUse,
+	updateMusicAudioUsedSection,
+	uploadMusicAudio,
+} from "../../models/audio.model";
 
 /**
  * Handles the service layer logic for uploading a photo post.
@@ -67,6 +73,29 @@ export const photoPostUploadService = async (
 		const photoPostInfo = await executeTransactionWithRetry<WithId<PhotoPost>>(
 			databaseClient,
 			async (session) => {
+				if (photoPostMetaData.usedAudio) {
+					const audioInfo = await getMusicAudioByApiId(
+						photoPostMetaData.usedAudio.id
+					);
+					if (!audioInfo) {
+						const musicApiResult = await getMusicAudioApiResultById(
+							photoPostMetaData.usedAudio.id
+						);
+						if (!musicApiResult) {
+							throw new AppError(
+								"Audio not found",
+								HttpStatusCodes.NOT_FOUND
+							);
+						}
+						photoPostMetaData.usedAudio.id = await uploadMusicAudio(
+							musicApiResult,
+							session,
+							photoPostMetaData.usedAudio.usedSection
+						);
+					} else {
+						photoPostMetaData.usedAudio.id = audioInfo._id.toString();
+					}
+				}
 				// Upload the post
 				const photoPostInfo = await photoPostUpload(
 					clientAccountId,
@@ -92,8 +121,13 @@ export const photoPostUploadService = async (
 
 				// Update audio usage count if an audio track is used
 				if (photoPostInfo.usedAudio) {
-					await updateAudioPostUse(
+					await updateMusicAudioPhotoUse(
 						photoPostInfo.usedAudio.id.toString(),
+						session
+					);
+					await updateMusicAudioUsedSection(
+						photoPostInfo.usedAudio.id.toString(),
+						photoPostInfo.usedAudio.usedSection,
 						session
 					);
 				}

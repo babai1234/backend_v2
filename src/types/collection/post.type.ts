@@ -43,8 +43,8 @@ export type MomentPost = {
 	video: PostVideoParams;
 	taggedAccounts?: ObjectId[];
 	usedAudio?: {
+		type: "original" | "music";
 		id: ObjectId;
-		usedSection: [number, number];
 	};
 } & Post;
 

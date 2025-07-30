@@ -5,6 +5,7 @@ import errorHandler from "./middleware/error.middleware";
 import "dotenv/config";
 import { initMediaConvert } from "./utils/functions";
 import { initS3Client } from "./utils/s3Client";
+/// <reference path="./index.d.ts" />
 
 const app = express();
 // Initialize the database

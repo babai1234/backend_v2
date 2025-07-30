@@ -19,9 +19,16 @@ import {
 	updateLocationMemoryUse,
 	updateLocationPostUse,
 } from "../../models/location.model";
-import { updateHashtagMemoryUse, updateHashtagPostUse } from "../../models/hashTag.model";
-import { updateAudioMemoryUse, updateAudioPostUse } from "../../models/audio.model";
+import { updateHashtagMemoryUse } from "../../models/hashTag.model";
 import { Memory } from "../../types/collection/memory.type";
+import {
+	getMusicAudioApiResultById,
+	getMusicAudioByApiId,
+	updateMusicAudioMemoryUse,
+	uploadMusicAudio,
+} from "../../models/audio.model";
+import { AppError } from "../../constants/appError";
+import HttpStatusCodes from "../../constants/HttpStatusCodes";
 
 /**
  * Handles uploading a memory (photo or video), updating related metadata such as
@@ -33,12 +40,12 @@ import { Memory } from "../../types/collection/memory.type";
  * @throws Will throw if any operation fails during the upload or update process.
  */
 export const memoryUploadService = async (
-	memoryMetadata: MemoryUploadParams,
+	memoryMetaData: MemoryUploadParams,
 	clientAccountInfo: WithId<Account>
 ): Promise<void> => {
 	try {
 		const clientAccountId = clientAccountInfo._id.toString();
-		const memoryMedia = memoryMetadata.media;
+		const memoryMedia = memoryMetaData.media;
 
 		let memoryFileInfo: Content;
 
@@ -74,11 +81,33 @@ export const memoryUploadService = async (
 		const memoryInfo = await executeTransactionWithRetry<WithId<Memory>>(
 			databaseClient,
 			async (session) => {
+				if (memoryMetaData.usedAudioId) {
+					const audioInfo = await getMusicAudioByApiId(
+						memoryMetaData.usedAudioId
+					);
+					if (!audioInfo) {
+						const musicApiResult = await getMusicAudioApiResultById(
+							memoryMetaData.usedAudioId
+						);
+						if (!musicApiResult) {
+							throw new AppError(
+								"Audio not found",
+								HttpStatusCodes.NOT_FOUND
+							);
+						}
+						memoryMetaData.usedAudioId = await uploadMusicAudio(
+							musicApiResult,
+							session
+						);
+					} else {
+						memoryMetaData.usedAudioId = audioInfo._id.toString();
+					}
+				}
 				// Upload memory to the database
 				const memoryInfo = await memoryUpload(
 					clientAccountId,
 					memoryFileInfo,
-					memoryMetadata
+					memoryMetaData
 				);
 
 				// If memory has a tagged location, update its usage stats
@@ -97,8 +126,11 @@ export const memoryUploadService = async (
 				}
 
 				// Update audio usage stats if a sound was used
-				if (memoryInfo.usedAudio) {
-					await updateAudioMemoryUse(memoryInfo.usedAudio.toString(), session);
+				if (memoryInfo.usedAudioId) {
+					await updateMusicAudioMemoryUse(
+						memoryInfo.usedAudioId.toString(),
+						session
+					);
 				}
 
 				// Return the newly inserted memory document

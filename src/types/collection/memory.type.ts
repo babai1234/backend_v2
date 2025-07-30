@@ -14,7 +14,7 @@ export type Memory = {
 	expiredAt: Date;
 	content: Content;
 	usedAfterEffect?: ObjectId;
-	usedAudio?: ObjectId;
+	usedAudioId?: ObjectId;
 	captions?: Caption[];
 	sticker?: Sticker;
 	taggedLocation?: {

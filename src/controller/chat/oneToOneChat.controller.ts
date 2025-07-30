@@ -502,13 +502,14 @@ export const oneToOneChatAudioAttachmentUploadHandler = async (
 
 		// Extract client account info and necessary parameters from the validated request body
 		const clientAccountInfo = req.clientAccountInfo;
-		const { audioId, sentTo, caption } =
+		const { audioId, sentTo, caption, type } =
 			matchedData<OneToOneChatAudioAttachmentUploadRequestParams>(req);
 
 		// Call the service responsible for handling the audio attachment upload
 		await oneToOneChatAudioAttachmentService(
 			sentTo, // The recipient of the audio attachment
 			clientAccountInfo, // Information about the client sending the audio
+			type, // The type of audio being uploaded (e.g., "voice", "music")
 			audioId, // The ID of the audio being uploaded
 			caption // Optional caption for the audio attachment
 		);

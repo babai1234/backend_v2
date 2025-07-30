@@ -283,6 +283,7 @@ export async function groupChatAttachmentMessageUpload(
 					attachment: {
 						type: "audio", // Attachment type is audio
 						id: new ObjectId(attachment.id),
+						audioType: attachment.audioType,
 					},
 					content: {
 						text: attachment.caption,
@@ -301,6 +302,7 @@ export async function groupChatAttachmentMessageUpload(
 					attachment: {
 						type: "audio",
 						id: new ObjectId(attachment.id),
+						audioType: attachment.audioType,
 					},
 				},
 			};

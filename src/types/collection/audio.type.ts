@@ -1,44 +1,54 @@
 import { ObjectId } from "mongodb";
-import { Photo } from "../util.type";
+import { AudioSaveList, Photo } from "../util.type";
 
-export type Audio = {
+type Audio = {
 	url: string;
 	duration: number;
 	createdAt: Date;
 	isDeleted: boolean;
 	isAvailable: boolean;
-	type: "original" | "song";
-	uploadedBy: "admin" | "user";
-	associatedAccountId?: ObjectId;
-	title?: string;
-	artist?: string;
-	poster?: Photo;
-	preview?: {
-		url: string;
-		start: number;
-		end: number;
-	};
-	genres?: string[];
-	bestSections?: { from: number; to: number }[];
+	title: string;
+	poster: Photo;
 	meta: {
-		noOfPostUse: number;
+		noOfPhotoUse: number;
+		noOfMomentUse: number;
 		noOfMemoryUse: number;
 		noOfVisits: number;
 		noOfSearches: number;
 		noOfShares: number;
 		noOfSaves: number;
 	};
+};
+
+export type MusicAudio = {
+	artists: string;
+	genres?: string[];
+	bestSections?: { from: number; to: number; count: number }[];
+	audioApiId: string;
 	status: "PROCESSING" | "SUCCESSFULL" | "FAILED";
+} & Audio;
+
+export type OriginalAudio = {
+	associatedAccountId: ObjectId;
+	status: "PROCESSING" | "SUCCESSFULL" | "FAILED";
+} & Audio;
+
+export type NewAudio = {
+	audioApiId: string;
+};
+
+export type TrendingAudio = {
+	audioApiId: ObjectId;
+	date: Date;
 };
 
 export type AudioSave = {
-	audioId: ObjectId;
+	audioIdList: AudioSaveList[];
 	savedBy: ObjectId;
-	savedAt: Date;
 };
 
-export type AudioVisit = {
+export type AudioUse = {
 	audioId: ObjectId;
-	visitedBy: ObjectId;
-	visitedAt: Date;
+	date: Date;
+	count: number;
 };

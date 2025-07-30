@@ -154,7 +154,7 @@ export const photoPostUploadSchema: Schema = {
 				if (typeof value !== "object" || Array.isArray(value)) {
 					throw new Error("usedAudio must be an object.");
 				}
-				const requiredFields = ["audioId", "usedSection"];
+				const requiredFields = ["id", "usedSection"];
 				const missingFields = requiredFields.filter((key) => !(key in value));
 				if (missingFields.length > 0) {
 					throw new Error(
@@ -165,28 +165,28 @@ export const photoPostUploadSchema: Schema = {
 			},
 		},
 	},
-	"usedAudio.audioId": {
+	"usedAudio.id": {
 		optional: true,
 		isString: {
 			bail: true,
-			errorMessage: "audioId should be a string",
+			errorMessage: "id should be a string",
 		},
 		trim: true,
 		notEmpty: {
 			options: { ignore_whitespace: true },
 			bail: true,
-			errorMessage: "audioId cannot be empty",
+			errorMessage: "id cannot be empty",
 		},
 		isLength: {
 			options: { min: 24, max: 24 },
 			bail: true,
-			errorMessage: "audioId must be 24 characters long",
+			errorMessage: "id must be 24 characters long",
 		},
 		isHexadecimal: {
 			bail: true,
-			errorMessage: "audioId must be a hexadecimal string",
+			errorMessage: "id must be a hexadecimal string",
 		},
-		errorMessage: "audioId is required",
+		errorMessage: "id is required",
 	},
 	"usedAudio.usedSection": {
 		optional: true,

@@ -231,7 +231,7 @@ export const audioAttachmentOneToOneChatSchema: Schema = {
 };
 
 export const audioAttachmentOneToOneChatValidFields: ValidSchemaFields = {
-	body: ["sentTo", "audioId", "caption"],
+	body: ["sentTo", "type", "audioId", "caption"],
 };
 
 export const memoryAttachmentOneToOneChatSchema: Schema = {
@@ -913,7 +913,7 @@ export const audioAttachmentGroupChatSchema: Schema = {
 };
 
 export const audioAttachmentGroupChatValidFields: ValidSchemaFields = {
-	body: ["chatId", "audioId", "caption"],
+	body: ["chatId", "type", "audioId", "caption"],
 };
 
 export const memoryAttachmentGroupChatSchema: Schema = {

@@ -22,13 +22,14 @@ import {
 	executeTransactionWithRetry,
 	getAccountAttachmentResponse,
 	getAccountContacts,
-	getAudioAttachmentResponse,
 	getChatMessageData,
 	getChatMessageResponseData,
 	getClipPostResponse,
 	getHighlightResponse,
 	getMemoryResponse,
 	getMomentPostResponse,
+	getMusicAudioAttachmentResponse,
+	getOriginalAudioAttachmentResponse,
 	getPhotoPostResponse,
 	isAccountBlocked,
 	isAccountFollower,
@@ -43,7 +44,10 @@ import { databaseClient } from "../../models/index.model";
 import { updateClipPostShares } from "../../models/post/clip.model";
 import { updateMomentPostShares } from "../../models/post/moment.model";
 import { updatePhotoPostShares } from "../../models/post/photo.model";
-import { updateAudioShares } from "../../models/audio.model";
+import {
+	updateMusicAudioShares,
+	updateOriginalAudioShares,
+} from "../../models/audio.model";
 import { updateMemoryShares } from "../../models/memory/memory.model";
 import { AppError } from "../../constants/appError";
 import HttpStatusCodes from "../../constants/HttpStatusCodes";
@@ -2597,6 +2601,7 @@ export const oneToOneChatAccountAttachmentService = async (
 export const oneToOneChatAudioAttachmentService = async (
 	userAccountId: string,
 	clientAccountInfo: WithId<Account>,
+	type: "original" | "music",
 	audioId: string,
 	caption?: string
 ): Promise<void> => {
@@ -2607,7 +2612,10 @@ export const oneToOneChatAudioAttachmentService = async (
 		// Check whether there exists a blocking relation between user and client, i.e either user has blocked client, or the client has blocked the user
 		const accountBlockedInfo = await isAccountBlocked(userAccountId, clientAccountId);
 		// Check whether the post exists or not, if not throw an error
-		const audioInfo = await getAudioAttachmentResponse(audioId, clientAccountId);
+		const audioInfo =
+			type === "original"
+				? await getOriginalAudioAttachmentResponse(audioId, clientAccountId)
+				: await getMusicAudioAttachmentResponse(audioId, clientAccountId);
 		if (audioInfo) {
 			// Check whether the client has the privilege to send the attachment based on any blocking relationship between the client and account
 			let hasClientSendingPrivilege: boolean;
@@ -2674,6 +2682,7 @@ export const oneToOneChatAudioAttachmentService = async (
 						let attachment: AttachmentPayloadParams = {
 							type: "audio",
 							id: audioId,
+							audioType: type,
 							caption: caption,
 						};
 						// Insert the message in the database, get the response message from the inserted messageId and send the message to the user and client through fcm
@@ -2688,7 +2697,9 @@ export const oneToOneChatAudioAttachmentService = async (
 										new Date(),
 										session
 									);
-								await updateAudioShares(audioId, session);
+								type === "music"
+									? await updateMusicAudioShares(audioId, session)
+									: await updateOriginalAudioShares(audioId, session);
 								return messageId;
 							}
 						);
@@ -2864,6 +2875,7 @@ export const oneToOneChatAudioAttachmentService = async (
 							let attachment: AttachmentPayloadParams = {
 								type: "audio",
 								id: audioId,
+								audioType: type,
 								caption: caption,
 							};
 							// Create the chat document in the database between client and user and then insert the message document for the chat in the database
@@ -2878,7 +2890,15 @@ export const oneToOneChatAudioAttachmentService = async (
 										new Date(),
 										session
 									);
-									await updateAudioShares(attachment.id, session);
+									type === "music"
+										? await updateMusicAudioShares(
+												attachment.id,
+												session
+										  )
+										: await updateOriginalAudioShares(
+												attachment.id,
+												session
+										  );
 									return messageId;
 								}
 							);
@@ -2965,6 +2985,7 @@ export const oneToOneChatAudioAttachmentService = async (
 							let attachment: AttachmentPayloadParams = {
 								type: "audio",
 								id: audioId,
+								audioType: type,
 								caption: caption,
 							};
 							// Create the chat document in the database between client and user and then insert the message document for the chat in the database
@@ -2979,7 +3000,15 @@ export const oneToOneChatAudioAttachmentService = async (
 										new Date(),
 										session
 									);
-									await updateAudioShares(attachment.id, session);
+									type === "music"
+										? await updateMusicAudioShares(
+												attachment.id,
+												session
+										  )
+										: await updateOriginalAudioShares(
+												attachment.id,
+												session
+										  );
 									return messageId;
 								}
 							);

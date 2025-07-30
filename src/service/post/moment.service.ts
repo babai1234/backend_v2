@@ -28,7 +28,6 @@ import {
 	momentPostUpload,
 	updateMomentPostComments,
 } from "../../models/post/moment.model";
-import { uploadAudio } from "../../models/audio.model";
 import {
 	CreateJobCommand,
 	CreateJobCommandInput,
@@ -38,6 +37,13 @@ import { getAccountById, getAccountByUserId } from "../../models/account.model";
 import { Comment, MomentPost } from "../../types/collection/post.type";
 import { AppError } from "../../constants/appError";
 import HttpStatusCodes from "../../constants/HttpStatusCodes";
+import {
+	getMusicAudioApiResultById,
+	getMusicAudioByApiId,
+	getOriginalAudioById,
+	uploadMusicAudio,
+	uploadOriginalAudio,
+} from "../../models/audio.model";
 
 /**
  * Handles the full lifecycle of uploading a "moment" post (short-form video).
@@ -87,21 +93,57 @@ export const momentPostUploadService = async (
 			),
 		} as PostVideoParams;
 
+		let hasNewMusicAudio = false;
+
 		// Create the post inside a transaction
 		const momentPostInfo = await executeTransactionWithRetry<WithId<MomentPost>>(
 			databaseClient,
 			async (session) => {
 				// If audio isn't already used and post isn't muted, extract original audio
-				const audioId =
-					!momentPostMetaData.usedAudio && !momentPostMetaData.isMute
-						? await uploadAudio(
-								momentPostMetaData.postFileInfo.fileName,
-								momentPostVideoParams.duration,
-								clientAccountInfo
-						  )
-						: momentPostMetaData.usedAudio
-						? momentPostMetaData.usedAudio.audioId
-						: undefined;
+				let audioId: string | undefined = undefined;
+				if (!momentPostMetaData.usedAudio && !momentPostMetaData.isMute) {
+					audioId = await uploadOriginalAudio(
+						momentPostMetaData.postFileInfo.fileName,
+						momentPostVideoParams.duration,
+						clientAccountInfo,
+						session
+					);
+				} else if (momentPostMetaData.usedAudio) {
+					if (momentPostMetaData.usedAudio.type === "music") {
+						const audioInfo = await getMusicAudioByApiId(
+							momentPostMetaData.usedAudio.id
+						);
+						if (!audioInfo) {
+							const musicApiResult = await getMusicAudioApiResultById(
+								momentPostMetaData.usedAudio.id
+							);
+							if (!musicApiResult) {
+								throw new AppError(
+									"Audio not found",
+									HttpStatusCodes.NOT_FOUND
+								);
+							}
+							momentPostMetaData.usedAudio.id = await uploadMusicAudio(
+								musicApiResult,
+								session,
+								momentPostMetaData.usedAudio.usedSection
+							);
+							hasNewMusicAudio = true;
+						} else {
+							momentPostMetaData.usedAudio.id = audioInfo._id.toString();
+						}
+					} else {
+						const audioInfo = await getOriginalAudioById(
+							momentPostMetaData.usedAudio.id
+						);
+						if (!audioInfo) {
+							throw new AppError(
+								"Audio not found",
+								HttpStatusCodes.NOT_FOUND
+							);
+						}
+					}
+				}
 
 				// Save the post to the database with audio reference (if any)
 				const momentPostInfo = await momentPostUpload(
@@ -142,7 +184,7 @@ export const momentPostUploadService = async (
 				postType: "moment",
 				postId: momentPostInfo._id.toString(),
 				clientId: clientAccountId,
-				hasOriginalAudio: String(shouldExtractAudio),
+				hasNewAudio: String(shouldExtractAudio || hasNewMusicAudio),
 				retryAttempts: String(0),
 				bucketName: process.env.AWS_S3_BUCKET_NAME as string,
 				fileName: momentPostMetaData.postFileInfo.fileName,

@@ -3,7 +3,14 @@ import path from "node:path";
 import { createSecureContext } from "node:tls";
 import fs from "node:fs";
 import { Account, AccountBlock, AccountFollow } from "../types/collection/account.type";
-import { Audio } from "../types/collection/audio.type";
+import {
+	TrendingAudio,
+	MusicAudio,
+	NewAudio,
+	OriginalAudio,
+	AudioSave,
+	AudioUse,
+} from "../types/collection/audio.type";
 import { ClipPost, Comment, MomentPost, PhotoPost } from "../types/collection/post.type";
 import {
 	ChatMessage,
@@ -16,6 +23,7 @@ import { HighLight, Memory } from "../types/collection/memory.type";
 import { Location } from "../types/collection/location.type";
 import { AppError } from "../constants/appError";
 import HttpStatusCodes from "../constants/HttpStatusCodes";
+import { app } from "firebase-admin";
 
 // const database_username = "";
 
@@ -62,7 +70,19 @@ export const accountCollection = appDatabase.collection<Account>("account");
 export const accountFollowCollection =
 	appDatabase.collection<AccountFollow>("account_follow");
 
-export const audioCollection = appDatabase.collection<Audio>("audio");
+export const originalAudioCollection =
+	appDatabase.collection<OriginalAudio>("original_audio");
+
+export const musicAudioCollection = appDatabase.collection<MusicAudio>("music_audio");
+
+export const audioNewCollection = appDatabase.collection<NewAudio>("new_audio");
+
+export const audioTrendingCollection =
+	appDatabase.collection<TrendingAudio>("trending_audio");
+
+export const audioSaveCollection = appDatabase.collection<AudioSave>("audio_save");
+
+export const audioUseCollection = appDatabase.collection<AudioUse>("audio_use");
 
 export const clipCollection = appDatabase.collection<ClipPost>("clip");
 

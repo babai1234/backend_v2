@@ -1,7 +1,7 @@
-import { NextFunction, Response } from "express";
-import { CustomRequest } from "../types/util.type";
+import { NextFunction, Response, Request } from "express";
 import { ObjectId } from "mongodb";
 import { accountCollection } from "../models/index.model";
+import { CustomRequest } from "../types/util.type";
 
 export const getClientAccountInfo = async (
 	req: CustomRequest,

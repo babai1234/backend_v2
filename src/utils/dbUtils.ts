@@ -19,7 +19,6 @@ import {
 	OneToOneChat,
 } from "../types/collection/chat.type";
 import { AccountAttachmentResponseParams } from "../types/response/account.type";
-// import { appDatabase } from "../models/index.model";
 import {
 	ClipPostResponseParams,
 	MomentPostResponseParams,
@@ -27,30 +26,26 @@ import {
 } from "../types/response/post.type";
 import { MessageResponseParams } from "../types/response/chat.type";
 import { AudioAttachmentResponseParams } from "../types/response/audio.type";
-import { Audio } from "../types/collection/audio.type";
-import { ClipPost, MomentPost, PhotoPost } from "../types/collection/post.type";
 import {
 	HighlightAttachmentResponseParams,
 	HighlightMemoryResponseParams,
 	MemoryAttachmentResponseParams,
 	MemoryResponseParams,
 } from "../types/response/memory.type";
-import { Memory } from "../types/collection/memory.type";
-import { LocationData } from "../types/util.type";
-import { Location } from "../types/collection/location.type";
 import { delay, isTransientError } from "./functions";
 import {
 	accountBlockCollection,
 	accountCollection,
 	accountFollowCollection,
-	audioCollection,
 	clipCollection,
 	groupChatCollection,
 	groupMessageCollection,
 	memoryCollection,
 	momentCollection,
+	musicAudioCollection,
 	oneToOneChatCollection,
 	oneToOneMessageCollection,
+	originalAudioCollection,
 	photoCollection,
 } from "../models/index.model";
 
@@ -2740,7 +2735,7 @@ export async function getClipPostResponse(
  * If uploaded by a user, the response includes associated account information.
  */
 
-export async function getAudioAttachmentResponse(
+export async function getOriginalAudioAttachmentResponse(
 	audioId: string,
 	clientAccountId: string
 ): Promise<AudioAttachmentResponseParams | null> {
@@ -2916,6 +2911,48 @@ export async function getAudioAttachmentResponse(
 			},
 		},
 		{
+			$lookup: {
+				from: "audio_save",
+				let: { audioId: "$_id" },
+				pipeline: [
+					{
+						$match: {
+							$expr: {
+								$and: [
+									{ $eq: ["$savedBy", new ObjectId(clientAccountId)] },
+									{
+										$anyElementTrue: {
+											$map: {
+												input: "$audioIdList",
+												as: "item",
+												in: {
+													$and: [
+														{
+															$eq: [
+																"$$item.type",
+																"original",
+															],
+														},
+														{
+															$eq: [
+																"$$item.audioId",
+																"$$audioId",
+															],
+														},
+													],
+												},
+											},
+										},
+									},
+								],
+							},
+						},
+					},
+				],
+				as: "audioSaveInfo",
+			},
+		},
+		{
 			$unwind: {
 				path: "$accountInfo",
 				preserveNullAndEmptyArrays: true,
@@ -2947,60 +2984,120 @@ export async function getAudioAttachmentResponse(
 				_id: 0,
 				id: { $toString: "$_id" },
 				title: "$title",
-				uploadedBy: "$uploadedBy",
-				type: "$type",
 				poster: "$poster",
 				noOfMomentUse: "$noOfMomentUse",
-				associatedAccountInfo: {
-					$cond: [
-						{
-							$eq: ["$uploadedBy", "user"],
-						},
-						"$accountInfo",
-						undefined,
-					],
-				},
-				artist: {
-					$cond: [
-						{
-							$eq: ["$uploadedBy", "admin"],
-						},
-						"$artist",
-						undefined,
-					],
-				},
-				isSaved: "$isSaved",
+				associatedAccountInfo: "$accountInfo",
+				isSaved: { $anyElementTrue: ["$audioSaveInfo"] },
 			},
 		},
 	];
 	try {
-		const audioInfo = await audioCollection
+		const audioInfo = await originalAudioCollection
 			.aggregate<AudioAttachmentResponseParams>(pipeline)
 			.next();
 		if (audioInfo) {
-			if (audioInfo.uploadedBy === "admin") {
-				return {
-					id: audioInfo.id,
-					title: audioInfo.title,
-					poster: audioInfo.poster,
-					uploadedBy: audioInfo.uploadedBy,
-					type: audioInfo.type,
-					artist: audioInfo.artist,
-					noOfMomentUse: audioInfo.noOfMomentUse,
-				};
-			} else {
-				return {
-					id: audioInfo.id,
-					title: audioInfo.title,
-					poster: audioInfo.poster,
-					uploadedBy: audioInfo.uploadedBy,
-					type: audioInfo.type,
-					associatedAccountInfo: audioInfo.associatedAccountInfo,
-					noOfMomentUse: audioInfo.noOfMomentUse,
-				};
-			}
+			return {
+				id: audioInfo.id,
+				title: audioInfo.title,
+				poster: audioInfo.poster,
+				type: "original",
+				associatedAccountInfo: audioInfo.associatedAccountInfo,
+				noOfMomentUse: audioInfo.noOfMomentUse,
+			};
 		}
-		return audioInfo;
+		return null;
+	} catch (error) {
+		throw error;
+	}
+}
+
+/**
+ * Retrieves the response details for an audio attachment.
+ * @param {string} audioId - The ID of the audio attachment to retrieve.
+ * @param {string} clientAccountId - The ID of the client requesting the audio attachment details.
+ * @returns {Promise<AudioAttachmentResponseParams | null>} - A promise that resolves to the audio attachment response parameters if found, or null if the audio attachment does not exist.
+ * If the audio was uploaded by an admin, the response includes the admin details.
+ * If uploaded by a user, the response includes associated account information.
+ */
+
+export async function getMusicAudioAttachmentResponse(
+	audioId: string,
+	clientAccountId: string
+): Promise<AudioAttachmentResponseParams | null> {
+	let pipeline = [
+		{
+			$match: {
+				_id: new ObjectId(audioId),
+				isDeleted: false,
+				isAvailable: true,
+			},
+		},
+		{
+			$lookup: {
+				from: "audio_save",
+				let: { audioId: "$_id" },
+				pipeline: [
+					{
+						$match: {
+							$expr: {
+								$and: [
+									{ $eq: ["$savedBy", new ObjectId(clientAccountId)] },
+									{
+										$anyElementTrue: {
+											$map: {
+												input: "$audioIdList",
+												as: "item",
+												in: {
+													$and: [
+														{
+															$eq: ["$$item.type", "music"],
+														},
+														{
+															$eq: [
+																"$$item.audioId",
+																audioId,
+															],
+														},
+													],
+												},
+											},
+										},
+									},
+								],
+							},
+						},
+					},
+				],
+				as: "audioSaveInfo",
+			},
+		},
+		{
+			$project: {
+				_id: 0,
+				id: { $toString: "$_id" },
+				title: "$title",
+				poster: "$poster",
+				artist: "$artist",
+				noOfMomentUse: "$noOfMomentUse",
+				isSaved: { $anyElementTrue: ["$audioSaveInfo"] },
+			},
+		},
+	];
+	try {
+		const audioInfo = await musicAudioCollection
+			.aggregate<AudioAttachmentResponseParams>(pipeline)
+			.next();
+		if (audioInfo) {
+			return {
+				id: audioInfo.id,
+				title: audioInfo.title,
+				poster: audioInfo.poster,
+				type: "music",
+				artist: audioInfo.artist,
+				noOfMomentUse: audioInfo.noOfMomentUse,
+			};
+		}
+		return null;
 	} catch (error) {
 		throw error;
 	}
@@ -4565,10 +4662,16 @@ export async function getChatMessageResponseData(
 							type: "reply",
 							attachment: {
 								type: messageInfo.data.attachment.type,
-								audioInfo: await getAudioAttachmentResponse(
-									messageInfo.data.attachment.id.toString(),
-									clientAccountId
-								),
+								audioInfo:
+									messageInfo.data.attachment.audioType === "Original"
+										? await getOriginalAudioAttachmentResponse(
+												messageInfo.data.attachment.id.toString(),
+												clientAccountId
+										  )
+										: await getMusicAudioAttachmentResponse(
+												messageInfo.data.attachment.id.toString(),
+												clientAccountId
+										  ),
 							},
 							repliedInfo: {
 								messageId:
@@ -4792,10 +4895,16 @@ export async function getChatMessageResponseData(
 							type: "attachment",
 							attachment: {
 								type: messageInfo.data.attachment.type,
-								audioInfo: await getAudioAttachmentResponse(
-									messageInfo.data.attachment.id.toString(),
-									clientAccountId
-								),
+								audioInfo:
+									messageInfo.data.attachment.audioType === "original"
+										? await getOriginalAudioAttachmentResponse(
+												messageInfo.data.attachment.id.toString(),
+												clientAccountId
+										  )
+										: await getMusicAudioAttachmentResponse(
+												messageInfo.data.attachment.id.toString(),
+												clientAccountId
+										  ),
 							},
 							caption: messageInfo.data.content?.text,
 						},
@@ -5045,10 +5154,17 @@ export async function getGroupChatMessageResponseData(
 								type: "reply",
 								attachment: {
 									type: "audio",
-									audioInfo: await getAudioAttachmentResponse(
-										messageInfo.data.attachment.id.toString(),
-										clientAccountId
-									),
+									audioInfo:
+										messageInfo.data.attachment.audioType ===
+										"Original"
+											? await getOriginalAudioAttachmentResponse(
+													messageInfo.data.attachment.id.toString(),
+													clientAccountId
+											  )
+											: await getMusicAudioAttachmentResponse(
+													messageInfo.data.attachment.id.toString(),
+													clientAccountId
+											  ),
 								},
 								repliedInfo,
 								content: messageInfo.data.content.text,
@@ -5235,10 +5351,17 @@ export async function getGroupChatMessageResponseData(
 								type: "attachment",
 								attachment: {
 									type: "audio",
-									audioInfo: await getAudioAttachmentResponse(
-										messageInfo.data.attachment.id.toString(),
-										clientAccountId
-									),
+									audioInfo:
+										messageInfo.data.attachment.audioType ===
+										"original"
+											? await getOriginalAudioAttachmentResponse(
+													messageInfo.data.attachment.id.toString(),
+													clientAccountId
+											  )
+											: await getMusicAudioAttachmentResponse(
+													messageInfo.data.attachment.id.toString(),
+													clientAccountId
+											  ),
 								},
 								caption,
 							},

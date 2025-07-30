@@ -7,12 +7,12 @@ import {
 	MomentPostUploadParams,
 	PostVideoParams,
 } from "../../types/util.type";
-import { getAudioById } from "../audio.model";
 import { getAccountById, getAccountByUserId } from "../account.model";
 import { getTaggedLocationInfoByOsmId } from "../location.model";
 import { momentCollection, momentCommentCollection } from "../index.model";
 import HttpStatusCodes from "../../constants/HttpStatusCodes";
 import { AppError } from "../../constants/appError";
+import { getMusicAudioById, getOriginalAudioById } from "../audio.model";
 
 /**
  * Uploads a moment post, including metadata, video details, and optional audio, location, and tagged accounts.
@@ -44,8 +44,12 @@ export const momentPostUpload = async (
 		let isTaggedLocationVaild = false;
 		let taggedAccounts: ObjectId[] = [];
 		let isUsedAudioValid = false;
-		let usedAudioInfo: { id: ObjectId; usedSection: [number, number] } | undefined =
-			undefined;
+		let usedAudioInfo:
+			| {
+					type: "music" | "original";
+					id: ObjectId;
+			  }
+			| undefined = undefined;
 
 		// Extract keywords, hashtags, mentions, and emojis from caption
 		if (momentPostMetaData.caption) {
@@ -133,38 +137,72 @@ export const momentPostUpload = async (
 
 		// Validate audio usage: check if the used audio section is valid
 		if (momentPostMetaData.usedAudio) {
-			const audioInfo = await getAudioById(momentPostMetaData.usedAudio.audioId);
-			if (audioInfo) {
-				let audioStart = momentPostMetaData.usedAudio.usedSection[0];
-				let audioEnd = momentPostMetaData.usedAudio.usedSection[1];
-				// Ensure the selected audio section is valid and at least 10 seconds long
-				if (
-					(audioStart < audioInfo.duration || audioStart >= 0) &&
-					(audioEnd <= audioInfo.duration || audioEnd > 0) &&
-					audioEnd - audioStart >= 10
-				) {
-					isUsedAudioValid = true;
-					usedAudioInfo = {
-						id: new ObjectId(momentPostMetaData.usedAudio.audioId),
-						usedSection: momentPostMetaData.usedAudio.usedSection,
-					};
+			if (momentPostMetaData.usedAudio.type === "music") {
+				const audioInfo = await getMusicAudioById(
+					momentPostMetaData.usedAudio.id
+				);
+				if (audioInfo) {
+					let audioStart = momentPostMetaData.usedAudio.usedSection[0];
+					let audioEnd = momentPostMetaData.usedAudio.usedSection[1];
+					// Ensure the selected audio section is valid and at least 10 seconds long
+					if (
+						(audioStart < audioInfo.duration || audioStart >= 0) &&
+						(audioEnd <= audioInfo.duration || audioEnd > 0) &&
+						audioEnd - audioStart >= 10
+					) {
+						isUsedAudioValid = true;
+						usedAudioInfo = {
+							type: "music",
+							id: new ObjectId(momentPostMetaData.usedAudio.id),
+						};
+					} else {
+						throw new AppError(
+							"Failed to add audio",
+							HttpStatusCodes.BAD_REQUEST
+						);
+					}
 				} else {
-					throw new AppError(
-						"Failed to add audio",
-						HttpStatusCodes.BAD_REQUEST
-					);
+					throw new AppError("Failed to add audio", HttpStatusCodes.NOT_FOUND);
 				}
 			} else {
-				throw new AppError("Failed to add audio", HttpStatusCodes.NOT_FOUND);
+				// If the used audio is of type "original", upload it
+				const audioInfo = await getOriginalAudioById(
+					momentPostMetaData.usedAudio.id
+				);
+				if (audioInfo) {
+					let audioStart = momentPostMetaData.usedAudio.usedSection[0];
+					let audioEnd = momentPostMetaData.usedAudio.usedSection[1];
+					// Ensure the selected audio section is valid and at least 10 seconds long
+					if (
+						audioStart < audioInfo.duration &&
+						audioStart >= 0 &&
+						audioEnd <= audioInfo.duration &&
+						audioEnd > 0 &&
+						audioEnd - audioStart >= 10
+					) {
+						isUsedAudioValid = true;
+						usedAudioInfo = {
+							type: "original",
+							id: new ObjectId(momentPostMetaData.usedAudio.id),
+						};
+					} else {
+						throw new AppError(
+							"Failed to add audio",
+							HttpStatusCodes.BAD_REQUEST
+						);
+					}
+				} else {
+					throw new AppError("Failed to add audio", HttpStatusCodes.NOT_FOUND);
+				}
 			}
 		} else if (audioId) {
 			// If no audio is provided in the metadata, check for audioId parameter
-			const audioInfo = await getAudioById(audioId);
+			const audioInfo = await getOriginalAudioById(audioId);
 			if (audioInfo) {
 				isUsedAudioValid = true;
 				usedAudioInfo = {
+					type: "original",
 					id: new ObjectId(audioId),
-					usedSection: [0, audioInfo.duration],
 				};
 			} else {
 				throw new AppError("Failed to add audio", HttpStatusCodes.NOT_FOUND);

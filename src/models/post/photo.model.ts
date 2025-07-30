@@ -8,11 +8,11 @@ import {
 import { isAccountBlocked, isAccountFollower } from "../../utils/dbUtils";
 import { getEmojis, getHashtags, getKeywords, getMentions } from "../../utils/functions";
 import { photoCollection, photoCommentCollection } from "../index.model";
-import { getAudioById } from "../audio.model";
 import { getAccountById, getAccountByUserId } from "../account.model";
 import { getTaggedLocationInfoByOsmId } from "../location.model";
 import { AppError } from "../../constants/appError";
 import HttpStatusCodes from "../../constants/HttpStatusCodes";
+import { getMusicAudioById } from "../audio.model";
 
 /**
  * Uploads a photo post with associated metadata, handling tags, locations, and audio sections.
@@ -136,7 +136,7 @@ export const photoPostUpload = async (
 
 		// Validate the audio section if used
 		if (photoPostMetaData.usedAudio) {
-			const audioInfo = await getAudioById(photoPostMetaData.usedAudio.audioId);
+			const audioInfo = await getMusicAudioById(photoPostMetaData.usedAudio.id);
 			if (audioInfo) {
 				let audioStart = photoPostMetaData.usedAudio.usedSection[0];
 				let audioEnd = photoPostMetaData.usedAudio.usedSection[1];
@@ -148,7 +148,7 @@ export const photoPostUpload = async (
 				) {
 					isUsedAudioValid = true;
 					usedAudioInfo = {
-						id: new ObjectId(photoPostMetaData.usedAudio.audioId),
+						id: new ObjectId(photoPostMetaData.usedAudio.id),
 						usedSection: photoPostMetaData.usedAudio.usedSection,
 					};
 				} else {

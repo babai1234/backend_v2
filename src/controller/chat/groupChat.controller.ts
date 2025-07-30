@@ -467,13 +467,14 @@ export const groupChatAudioAttachmentUploadHandler = async (
 		const clientAccountInfo = req.clientAccountInfo;
 
 		// Extract validated data from the request
-		const { audioId, chatId, caption } =
+		const { audioId, chatId, caption, type } =
 			matchedData<GroupChatAudioAttachmentUploadRequestParams>(req);
 
 		// Delegate the attachment upload logic to the service layer
 		await groupChatAudioAttachmentService(
 			chatId,
 			clientAccountInfo,
+			type,
 			audioId,
 			caption
 		);

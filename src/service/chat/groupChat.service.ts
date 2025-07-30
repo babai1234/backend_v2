@@ -27,7 +27,6 @@ import {
 import {
 	executeTransactionWithRetry,
 	getAccountAttachmentResponse,
-	getAudioAttachmentResponse,
 	getClipPostResponse,
 	getGroupChatById,
 	getGroupChatMessageData,
@@ -35,6 +34,8 @@ import {
 	getHighlightResponse,
 	getMemoryResponse,
 	getMomentPostResponse,
+	getMusicAudioAttachmentResponse,
+	getOriginalAudioAttachmentResponse,
 	getPhotoPostResponse,
 	isAccountBlocked,
 	isAccountFollower,
@@ -44,7 +45,10 @@ import { databaseClient } from "../../models/index.model";
 import { updatePhotoPostShares } from "../../models/post/photo.model";
 import { updateMomentPostShares } from "../../models/post/moment.model";
 import { updateClipPostShares } from "../../models/post/clip.model";
-import { updateAudioShares } from "../../models/audio.model";
+import {
+	updateMusicAudioShares,
+	updateOriginalAudioShares,
+} from "../../models/audio.model";
 import { updateMemoryShares } from "../../models/memory/memory.model";
 import { AppError } from "../../constants/appError";
 import HttpStatusCodes from "../../constants/HttpStatusCodes";
@@ -1030,6 +1034,7 @@ export const groupChatClipPostAttachmentService = async (
 export const groupChatAudioAttachmentService = async (
 	chatId: string,
 	clientAccountInfo: WithId<Account>,
+	type: "music" | "original",
 	audioId: string,
 	caption?: string
 ): Promise<void> => {
@@ -1048,10 +1053,13 @@ export const groupChatAudioAttachmentService = async (
 			// If the client is in the participant list of the chat document and is an active member of the chat, then check whether the message is reply or not, else throw an error
 			if (isMember) {
 				// Check whether the post exists or not, if not throw an error
-				const audioInfo = await getAudioAttachmentResponse(
-					audioId,
-					clientAccountId
-				);
+				const audioInfo =
+					type === "original"
+						? await getOriginalAudioAttachmentResponse(
+								audioId,
+								clientAccountId
+						  )
+						: await getMusicAudioAttachmentResponse(audioId, clientAccountId);
 				if (audioInfo) {
 					// Check whether the client has the privilege to send the attachment based on any blocking relationship between the client and aurthor or if the author is a private account and whether the client follows the author or not
 					let hasClientSendingPrivilege: boolean;
@@ -1074,6 +1082,7 @@ export const groupChatAudioAttachmentService = async (
 						let attachment: AttachmentPayloadParams = {
 							type: "audio",
 							id: audioId,
+							audioType: type,
 							caption: caption,
 						};
 						// Insert the message in the database, get the response message from the inserted messageId and send the message through fcm
@@ -1087,7 +1096,12 @@ export const groupChatAudioAttachmentService = async (
 									new Date(),
 									session
 								);
-								await updateAudioShares(attachment.id, session);
+								type === "music"
+									? await updateMusicAudioShares(attachment.id, session)
+									: await updateOriginalAudioShares(
+											attachment.id,
+											session
+									  );
 								return messageId;
 							}
 						);
